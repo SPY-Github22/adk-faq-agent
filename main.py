@@ -2,8 +2,7 @@ import os
 import uvicorn
 from fastapi import FastAPI
 from pydantic import BaseModel
-from google import genai
-from google.genai import types
+import google.generativeai as genai
 from agent import KNOWLEDGE_BASE
 
 app = FastAPI(title="ADK FAQ Agent - Hack2Skill Track 1")
@@ -29,22 +28,13 @@ def health_check():
 
 @app.post("/run", response_model=QueryResponse)
 async def run_agent(req: QueryRequest):
-    api_key = os.getenv("GOOGLE_API_KEY")
-    client = genai.Client(api_key=api_key)
-
-    response = client.models.generate_content(
-        model="gemini-2.0-flash",
-        contents=req.input,
-        config=types.GenerateContentConfig(
-            system_instruction=SYSTEM_INSTRUCTION,
-            max_output_tokens=300,
-        )
+    genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+    model = genai.GenerativeModel(
+        model_name="gemini-2.0-flash",
+        system_instruction=SYSTEM_INSTRUCTION
     )
-
-    return QueryResponse(
-        response=response.text,
-        agent="faq_agent"
-    )
+    response = model.generate_content(req.input)
+    return QueryResponse(response=response.text, agent="faq_agent")
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
